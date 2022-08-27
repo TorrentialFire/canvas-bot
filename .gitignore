@@ -1,2 +1,4 @@
 # Ignore configuration file so it can't easily be uploaded to git
 canvas-bot-config.json
+/__pycache__
+datanotes.txt
