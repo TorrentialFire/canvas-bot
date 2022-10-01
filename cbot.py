@@ -91,11 +91,15 @@ class CBotClient(discord.Client):
 
     # Creates a post for an assignment
     async def _post_assignment(self, assignment):
+        description = ""
+        if not assignment['description'] is None:
+            description = strip_tags(assignment['description'])
+
         embed = discord.Embed(
             title = assignment['name'], 
             url = assignment['html_url'],
             color = discord.Color.from_str('#841617'),
-            description=strip_tags(assignment['description']))
+            description=description)
 
         embed.add_field(name='Created On', value=pretty_date(assignment['created_at']), inline = False)
         embed.add_field(name='Unlocks On', value=pretty_date(assignment['unlock_at']), inline = False)
@@ -128,7 +132,12 @@ class CBotClient(discord.Client):
             sub_embed.set_thumbnail(url=thumb_url)
 
         sub_embed.add_field(name='Author', value=author, inline=False)
-        sub_embed.add_field(name='Attachments', value=str(len(submission['attachments'])), inline=False)
+        
+        num_attachments = 0
+        if 'attachments' in submission:
+            num_attachments = len(submission['attachments'])
+        sub_embed.add_field(name='Attachments', value=str(num_attachments), inline=False)
+
         sub_embed.add_field(name='Attempt', value=submission['attempt'], inline=False)
         sub_embed.add_field(name='Timing', value="Late!" if submission['late'] else 'On time!', inline=False)
         sub_embed.add_field(name='Submitted On', value=pretty_date(submission['submitted_at']), inline=False)
@@ -154,11 +163,15 @@ class CBotClient(discord.Client):
                 # If we have not seen this assignment before
                 if not (any(stored_assignment['canvas_id'] == assignment_id for stored_assignment in stored_assignments)):
                     # Store info about it in the database
+                    description = ""
+                    if not assignment['description'] is None:
+                        description = strip_tags(assignment['description'])
+
                     await self.data.new_assignment(
                         assignment_id,
                         assignment['course_id'],
                         assignment['name'],
-                        strip_tags(assignment['description']),
+                        description,
                         assignment['html_url'],
                         dateparser.parse(assignment['created_at']),
                         dateparser.parse(assignment['unlock_at']),
@@ -169,7 +182,8 @@ class CBotClient(discord.Client):
                     await self._post_assignment(assignment)
 
                 # Check for new submissions
-                if (assignment['submission']['attempt'] > 0):
+                if (not assignment['submission']['attempt'] is None and 
+                    assignment['submission']['attempt'] > 0):
                     
                     submission = await self._canvas_request('/api/v1/courses/' + str(course_id) + '/assignments/' + str(assignment_id) + '/submissions/self?include[]=submission_comments')
                     #await self.debug_upload_json_as_file_attachment(su_js)
